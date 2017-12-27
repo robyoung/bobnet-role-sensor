@@ -1,0 +1,72 @@
+---
+
+- name: ensure /etc/bobnet exists
+  become: true
+  file:
+    path: /etc/bobnet
+    owner: root
+    mode: 0755
+    state: directory
+
+- name: check google CA root
+  become: true
+  stat:
+    path: /etc/bobnet/google-roots.pem
+  register: google_roots
+
+- name: download google CA root
+  become: true
+  get_url:
+    url: https://pki.goog/roots.pem
+    dest: /etc/bobnet/google-roots.pem
+    owner: root
+    mode: 0644
+  when: not google_roots.stat.exists or (ansible_date_time.epoch|float - google_roots.stat.mtime > 60*60*24*30)
+
+- name: install bobnet_sensors config
+  become: true
+  copy:
+    dest: /etc/bobnet/sensors-config.yml
+    src: "{{ bobnet_sensors_config }}"
+    owner: root
+    mode: 0644
+
+- name: install IoT Core private key
+  become: true
+  copy:
+    dest: /etc/bobnet/sensors-private.pem
+    content: "{{ bobnet_sensors_private_key }}"
+    owner: root
+    mode: 0644
+
+- name: ensure python-pip is installed
+  become: true
+  package:
+    name: python-pip
+    state: latest
+
+- name: ensure docker-py is installed
+  become: true
+  pip:
+    name: docker-py
+
+- name: pull bobnet-sensors image
+  become: true
+  docker_image:
+    name: robyoung/bobnet-sensors
+
+- name: install systemd service
+  become: true
+  copy:
+    dest: /etc/systemd/system/bobnet-sensors.service
+    src: bobnet-sensors.service
+    owner: root
+    mode: 0644
+
+- name: enable and start systemd service
+  become: true
+  systemd:
+    name: bobnet-sensors
+    state: started
+    enabled: yes
+    daemon_reload: yes

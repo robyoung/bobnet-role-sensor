@@ -1,0 +1,66 @@
+---
+# Enable the required options on the kernel
+
+- name: Enable cgroup memory
+  become: true
+  notify: reboot
+  replace:
+    path: /boot/cmdline.txt
+    regexp: 'rootwait.*'
+    replace: 'rootwait cgroup_enable=memory cgroup_memory=1 swapaccount=1'
+
+- name: Remove all raspi-blacklist
+  become: true
+  notify: reboot
+  copy:
+    dest: /etc/modprobe.d/raspi-blacklist.conf
+    content: ""
+
+- name: Disable camera LED
+  become: true
+  lineinfile:
+    path: /boot/config.txt
+    regexp: '#?disable_camera_led='
+    line: 'disable_camera_led=1'
+
+- name: Enable SPI dtparam on boot
+  become: true
+  register: spi_dtparam
+  notify: reboot
+  lineinfile:
+    path: /boot/config.txt
+    regexp: '#?dtparam=spi='
+    line: 'dtparam=spi=on'
+
+- name: Enable SPI dtparam
+  become: true
+  command: /usr/bin/dtparam spi=on
+  when: spi_dtparam.changed
+
+- name: Enable I2C dtparam on boot
+  become: true
+  register: i2c_dtparam
+  notify: reboot
+  lineinfile:
+    path: /boot/config.txt
+    regexp: '#?dtparam=i2c_arm='
+    line: 'dtparam=i2c_arm=on'
+
+- name: Enable I2C dtparam
+  become: true
+  command: /usr/bin/dtparam i2c_arm=on
+  when: i2c_dtparam.changed
+
+- name: Enable I2C kernel module on boot
+  become: true
+  register: i2c_module
+  notify: reboot
+  lineinfile:
+    path: /etc/modules
+    regexp: '#? *i2c[-_]dev'
+    line: i2c-dev
+
+- name: Enable I2C kernel module
+  become: true
+  modprobe: name=i2c-dev
+  when: i2c_module.changed

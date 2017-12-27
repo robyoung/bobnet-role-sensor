@@ -1,0 +1,26 @@
+[Unit]
+Description=Bobnet Sensors
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=-/usr/bin/docker kill bobnet-sensors
+ExecStartPre=-/usr/bin/docker rm bobnet-sensors
+ExecStart=/usr/bin/docker run \
+            --rm \
+            --name bobnet-sensors \
+            --cap-add SYS_RAWIO \
+            --device /dev/i2c-1 \
+            --device /dev/mem \
+            -v /etc/bobnet:/etc/bobnet \
+            robyoung/bobnet-sensors:latest \
+            bobnet-sensors \
+                --config /etc/bobnet/sensors-config.yml \
+                --log-level DEBUG
+ExecStop=/usr/bin/docker stop bobnet-sensors
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

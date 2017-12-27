@@ -1,0 +1,9 @@
+---
+
+- name: add bob01 to /etc/hosts
+  become: true
+  lineinfile:
+    path: /etc/hosts
+    regexp: bob01
+    line: "{{ bobnet_networking['bob01'].eth1_ipv4_address }} bob01"
+
